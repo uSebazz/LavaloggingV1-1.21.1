@@ -4,6 +4,23 @@
 build/
 out/
 classes/
+**/build/
+**/out/
+**/classes/
+!gradle/wrapper/gradle-wrapper.jar
+
+# gradle local machine files
+
+local.properties
+gradle-app.setting
+
+# loom/fabric runtime and caches
+
+run/
+crash-reports/
+logs/
+remappedSrc/
+.fabric/
 
 # eclipse
 
@@ -23,14 +40,16 @@ classes/
 bin/
 .classpath
 .project
+*.code-workspace
+
+# tooling caches
+
+.cache/
+.history/
 
 # macos
 
 *.DS_Store
-
-# fabric
-
-run/
 
 # java
 
@@ -38,3 +57,8 @@ hs_err_*.log
 replay_*.log
 *.hprof
 *.jfr
+*.log
+
+# local debug/output files
+
+crashlog.txt

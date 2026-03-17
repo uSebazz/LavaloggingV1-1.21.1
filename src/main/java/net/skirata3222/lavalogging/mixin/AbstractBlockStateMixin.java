@@ -12,33 +12,31 @@ import net.minecraft.fluid.Fluids;
 import net.minecraft.state.property.Properties;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.random.Random;
+import net.minecraft.world.WorldAccess;
 import net.minecraft.world.WorldView;
-
-import net.minecraft.world.tick.ScheduledTickView;
 import net.skirata3222.lavalogging.util.Lavaloggable;
 
 @Mixin(AbstractBlockState.class)
 public abstract class AbstractBlockStateMixin {
-	
+
 	@Inject(method = "getLuminance", at = @At("HEAD"), cancellable = true)
 	private void lavaloggedLuminance(CallbackInfoReturnable<Integer> cir) {
-		BlockState self = (BlockState)(Object)this;
+		BlockState self = (BlockState) (Object) this;
 		if (self.contains(Lavaloggable.LAVALOGGED) && self.get(Lavaloggable.LAVALOGGED)) {
 			cir.setReturnValue(15);
 		}
 	}
 
-	@Inject(method = "getStateForNeighborUpdate",
-			at = @At("HEAD"))
-	private void scheduleFluidTicks(WorldView world, ScheduledTickView tickView, BlockPos pos, Direction direction, BlockPos neighborPos, BlockState neighborState, Random random, CallbackInfoReturnable<BlockState> cir) {
-		BlockState state = world.getBlockState(pos);
-		if (state.getBlock() instanceof AnvilBlock) {
-			if (state.contains(Lavaloggable.LAVALOGGED) && state.get(Lavaloggable.LAVALOGGED)) {
-				tickView.scheduleFluidTick(pos, Fluids.LAVA, Fluids.LAVA.getTickRate(world));
+	@Inject(method = "getStateForNeighborUpdate", at = @At("HEAD"))
+	private void scheduleFluidTicks(Direction direction, BlockState neighborState, WorldAccess world,
+			BlockPos pos, BlockPos neighborPos, CallbackInfoReturnable<BlockState> cir) {
+		BlockState self = (BlockState) (Object) this;
+		if (self.getBlock() instanceof AnvilBlock) {
+			if (self.contains(Lavaloggable.LAVALOGGED) && self.get(Lavaloggable.LAVALOGGED)) {
+				world.scheduleFluidTick(pos, Fluids.LAVA, Fluids.LAVA.getTickRate(world));
 			}
-			if (state.contains(Properties.WATERLOGGED) && state.get(Properties.WATERLOGGED)) {
-				tickView.scheduleFluidTick(pos, Fluids.WATER, Fluids.WATER.getTickRate(world));
+			if (self.contains(Properties.WATERLOGGED) && self.get(Properties.WATERLOGGED)) {
+				world.scheduleFluidTick(pos, Fluids.WATER, Fluids.WATER.getTickRate(world));
 			}
 		}
 	}

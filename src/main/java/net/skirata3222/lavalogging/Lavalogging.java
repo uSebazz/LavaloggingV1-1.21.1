@@ -10,6 +10,7 @@ import net.minecraft.resource.ResourceManager;
 import net.minecraft.resource.ResourceType;
 import net.minecraft.state.property.Properties;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.profiler.Profiler;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -30,46 +31,52 @@ public class Lavalogging implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		System.out.println("LOADING LAVALOGGED NOW");
-		
+
 		// Server authoritative
 		ResourceManagerHelper.get(ResourceType.SERVER_DATA).registerReloadListener(
-			new SimpleResourceReloadListener<Set<Identifier>>() {
-				@Override
-				public Identifier getFabricId() {
-					return Identifier.of("lavalogging", "server_blocklist");
-				}
-				@Override
-				public CompletableFuture<Set<Identifier>> load(ResourceManager manager, Executor executor) {
-					return CompletableFuture.supplyAsync(() ->
-						BlockListParser.parse(manager, "blocklists/lavalog_eligible.json"), executor);
-				}
-				@Override
-				public CompletableFuture<Void> apply(Set<Identifier> data, ResourceManager manager, Executor executor) {
-					BlockListRegistry.setServerList(data);
-					return CompletableFuture.completedFuture(null);
-				}
-			}
-		);
+				new SimpleResourceReloadListener<Set<Identifier>>() {
+					@Override
+					public Identifier getFabricId() {
+						return Identifier.of("lavalogging", "server_blocklist");
+					}
+
+					@Override
+					public CompletableFuture<Set<Identifier>> load(ResourceManager manager, Profiler profiler,
+							Executor executor) {
+						return CompletableFuture.supplyAsync(
+								() -> BlockListParser.parse(manager, "blocklists/lavalog_eligible.json"), executor);
+					}
+
+					@Override
+					public CompletableFuture<Void> apply(Set<Identifier> data, ResourceManager manager,
+							Profiler profiler, Executor executor) {
+						BlockListRegistry.setServerList(data);
+						return CompletableFuture.completedFuture(null);
+					}
+				});
 
 		// Client fallback
 		ResourceManagerHelper.get(ResourceType.CLIENT_RESOURCES).registerReloadListener(
-			new SimpleResourceReloadListener<Set<Identifier>>() {
-				@Override
-				public Identifier getFabricId() {
-					return Identifier.of("lavalogging", "client_blocklist");
-				}
-				@Override
-				public CompletableFuture<Set<Identifier>> load(ResourceManager manager, Executor executor) {
-					return CompletableFuture.supplyAsync(() ->
-						BlockListParser.parse(manager, "blocklists/lavalog_eligible.json"), executor);
-				}
-				@Override
-				public CompletableFuture<Void> apply(Set<Identifier> data, ResourceManager manager, Executor executor) {
-					BlockListRegistry.setClientList(data);
-					return CompletableFuture.completedFuture(null);
-				}
-			}
-		);
+				new SimpleResourceReloadListener<Set<Identifier>>() {
+					@Override
+					public Identifier getFabricId() {
+						return Identifier.of("lavalogging", "client_blocklist");
+					}
+
+					@Override
+					public CompletableFuture<Set<Identifier>> load(ResourceManager manager, Profiler profiler,
+							Executor executor) {
+						return CompletableFuture.supplyAsync(
+								() -> BlockListParser.parse(manager, "blocklists/lavalog_eligible.json"), executor);
+					}
+
+					@Override
+					public CompletableFuture<Void> apply(Set<Identifier> data, ResourceManager manager,
+							Profiler profiler, Executor executor) {
+						BlockListRegistry.setClientList(data);
+						return CompletableFuture.completedFuture(null);
+					}
+				});
 
 		fixDefaultStates();
 	}
@@ -80,9 +87,8 @@ public class Lavalogging implements ModInitializer {
 				BlockState state = block.getDefaultState();
 				if (state.contains(Lavaloggable.LAVALOGGED)) {
 					((BlockAccessor) block).invokeSetDefaultState(
-						state.with(Lavaloggable.LAVALOGGED, false)
-							 .with(Properties.WATERLOGGED, false)
-					);
+							state.with(Lavaloggable.LAVALOGGED, false)
+									.with(Properties.WATERLOGGED, false));
 				}
 			}
 		}

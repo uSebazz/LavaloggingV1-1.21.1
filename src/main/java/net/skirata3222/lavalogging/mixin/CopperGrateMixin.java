@@ -22,25 +22,16 @@ import net.minecraft.state.property.Properties;
 import net.minecraft.state.property.Property;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.random.Random;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.WorldAccess;
-import net.minecraft.world.WorldView;
-import net.minecraft.world.tick.ScheduledTickView;
 
 import net.skirata3222.lavalogging.util.BlockListRegistry;
 import net.skirata3222.lavalogging.util.Lavaloggable;
 
 @Mixin(GrateBlock.class)
-public abstract class CopperGrateMixin implements Lavaloggable{
-	
-	@ModifyArgs(
-		method = "appendProperties", 
-		at = @At(
-			value = "INVOKE", 
-			target = "Lnet/minecraft/state/StateManager$Builder;add([Lnet/minecraft/state/property/Property;)Lnet/minecraft/state/StateManager$Builder;"
-		)
-	)
+public abstract class CopperGrateMixin implements Lavaloggable {
+
+	@ModifyArgs(method = "appendProperties", at = @At(value = "INVOKE", target = "Lnet/minecraft/state/StateManager$Builder;add([Lnet/minecraft/state/property/Property;)Lnet/minecraft/state/StateManager$Builder;"))
 	private void modifyAppendPropertiesArgs(Args args) {
 		Property<?>[] original = args.get(0);
 		// Find WATERLOGGED’s index
@@ -70,26 +61,34 @@ public abstract class CopperGrateMixin implements Lavaloggable{
 	@Inject(method = "getPlacementState", at = @At("RETURN"), cancellable = true)
 	private void injectLavaPlacement(ItemPlacementContext ctx, CallbackInfoReturnable<BlockState> cir) {
 		BlockState state = cir.getReturnValue();
+		if (state == null) {
+			return;
+		}
 		FluidState fluidState = ctx.getWorld().getFluidState(ctx.getBlockPos());
-		if (fluidState.getFluid() == Fluids.LAVA && state.contains(LAVALOGGED) && BlockListRegistry.isAllowed(state.getBlock())) {
+		if (fluidState.getFluid() == Fluids.LAVA && state.contains(LAVALOGGED)
+				&& BlockListRegistry.isAllowed(state.getBlock())) {
 			cir.setReturnValue(state.with(LAVALOGGED, true));
 			return;
 		} else {
-			cir.setReturnValue(state.with(LAVALOGGED,false));
+			cir.setReturnValue(state.with(LAVALOGGED, false));
 			return;
 		}
 	}
 
 	@Inject(method = "getStateForNeighborUpdate", at = @At("TAIL"))
-	private void lavalogNeighbor(BlockState state, WorldView world, ScheduledTickView tickView, BlockPos pos, Direction direction, BlockPos neighborPos, BlockState neighborState, Random random, CallbackInfoReturnable<BlockState> cir) {
+	private void lavalogNeighbor(BlockState state, Direction direction, BlockState neighborState, WorldAccess world,
+			BlockPos pos, BlockPos neighborPos, CallbackInfoReturnable<BlockState> cir) {
 		if (state.contains(LAVALOGGED) && state.get(LAVALOGGED)) {
-			tickView.scheduleFluidTick(pos, Fluids.LAVA, Fluids.LAVA.getTickRate(world));
+			world.scheduleFluidTick(pos, Fluids.LAVA, Fluids.LAVA.getTickRate(world));
 		}
 	}
 
 	@Override
-	public boolean canFillWithFluid(@Nullable PlayerEntity player, BlockView world, BlockPos pos, BlockState state, Fluid fluid) {
-		if (fluid == Fluids.LAVA && state.contains(Lavaloggable.LAVALOGGED) && BlockListRegistry.isAllowed(state.getBlock()) && !state.get(Lavaloggable.LAVALOGGED) && !state.get(Properties.WATERLOGGED)) {
+	public boolean canFillWithFluid(@Nullable PlayerEntity player, BlockView world, BlockPos pos, BlockState state,
+			Fluid fluid) {
+		if (fluid == Fluids.LAVA && state.contains(Lavaloggable.LAVALOGGED)
+				&& BlockListRegistry.isAllowed(state.getBlock()) && !state.get(Lavaloggable.LAVALOGGED)
+				&& !state.get(Properties.WATERLOGGED)) {
 			return true;
 		}
 		if (fluid == Fluids.WATER && state.contains(Lavaloggable.LAVALOGGED) && state.get(Lavaloggable.LAVALOGGED)) {
@@ -100,14 +99,17 @@ public abstract class CopperGrateMixin implements Lavaloggable{
 
 	@Override
 	public boolean tryFillWithFluid(WorldAccess world, BlockPos pos, BlockState state, FluidState fluidState) {
-		if (fluidState.getFluid() == Fluids.LAVA && state.contains(Lavaloggable.LAVALOGGED) && BlockListRegistry.isAllowed(state.getBlock()) && !state.get(Lavaloggable.LAVALOGGED) && !state.get(Properties.WATERLOGGED)) {
+		if (fluidState.getFluid() == Fluids.LAVA && state.contains(Lavaloggable.LAVALOGGED)
+				&& BlockListRegistry.isAllowed(state.getBlock()) && !state.get(Lavaloggable.LAVALOGGED)
+				&& !state.get(Properties.WATERLOGGED)) {
 			if (!world.isClient()) {
 				world.setBlockState(pos, state.with(Lavaloggable.LAVALOGGED, true), Block.NOTIFY_ALL);
 				world.scheduleFluidTick(pos, Fluids.LAVA, Fluids.LAVA.getTickRate(world));
 			}
 			return true;
 		}
-		if (fluidState.getFluid() == Fluids.WATER && state.contains(Lavaloggable.LAVALOGGED) && !state.get(Lavaloggable.LAVALOGGED) && !state.get(Properties.WATERLOGGED)) {
+		if (fluidState.getFluid() == Fluids.WATER && state.contains(Lavaloggable.LAVALOGGED)
+				&& !state.get(Lavaloggable.LAVALOGGED) && !state.get(Properties.WATERLOGGED)) {
 			if (!world.isClient()) {
 				world.setBlockState(pos, state.with(Properties.WATERLOGGED, true), Block.NOTIFY_ALL);
 				world.scheduleFluidTick(pos, Fluids.WATER, Fluids.WATER.getTickRate(world));
@@ -127,7 +129,7 @@ public abstract class CopperGrateMixin implements Lavaloggable{
 			return new ItemStack(Items.LAVA_BUCKET);
 		}
 		if (state.get(Properties.WATERLOGGED)) {
-			world.setBlockState(pos, state.with(Properties.WATERLOGGED,false), Block.NOTIFY_ALL);
+			world.setBlockState(pos, state.with(Properties.WATERLOGGED, false), Block.NOTIFY_ALL);
 			if (!state.canPlaceAt(world, pos)) {
 				world.breakBlock(pos, true);
 			}

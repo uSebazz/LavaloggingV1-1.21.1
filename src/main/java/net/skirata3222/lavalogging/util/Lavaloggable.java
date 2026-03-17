@@ -8,23 +8,21 @@ import net.minecraft.fluid.Fluids;
 import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.state.property.BooleanProperty;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.WorldView;
-import net.minecraft.world.tick.ScheduledTickView;
-
-
+import net.minecraft.world.WorldAccess;
 
 public interface Lavaloggable extends FluidFillable, FluidDrainable {
 	BooleanProperty LAVALOGGED = BooleanProperty.of("lavalogged");
 
-	default BlockState withLavaPlacement(BlockState state, ItemPlacementContext ctx){
-		if (!BlockListRegistry.isAllowed(state.getBlock())) return state.with(LAVALOGGED, false);
+	default BlockState withLavaPlacement(BlockState state, ItemPlacementContext ctx) {
+		if (!BlockListRegistry.isAllowed(state.getBlock()))
+			return state.with(LAVALOGGED, false);
 		FluidState fluidState = ctx.getWorld().getFluidState(ctx.getBlockPos());
 		return state.with(LAVALOGGED, fluidState.getFluid() == Fluids.LAVA);
 	}
 
-	default BlockState updateLavaNeighbor(BlockState state, WorldView world, ScheduledTickView scheduler, BlockPos pos){
+	default BlockState updateLavaNeighbor(BlockState state, WorldAccess world, BlockPos pos) {
 		if (state.get(LAVALOGGED) && BlockListRegistry.isAllowed(state.getBlock())) {
-			scheduler.scheduleFluidTick(pos, Fluids.LAVA, Fluids.LAVA.getTickRate(world));
+			world.scheduleFluidTick(pos, Fluids.LAVA, Fluids.LAVA.getTickRate(world));
 		}
 		return state;
 	}

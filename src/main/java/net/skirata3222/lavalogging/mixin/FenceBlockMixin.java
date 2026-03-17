@@ -22,25 +22,16 @@ import net.minecraft.item.Items;
 import net.minecraft.state.property.Property;
 import net.minecraft.state.property.Properties;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.random.Random;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.WorldAccess;
-import net.minecraft.world.WorldView;
-import net.minecraft.world.tick.ScheduledTickView;
 
 import net.skirata3222.lavalogging.util.BlockListRegistry;
 import net.skirata3222.lavalogging.util.Lavaloggable;
 
 @Mixin(FenceBlock.class)
-public abstract class FenceBlockMixin implements Lavaloggable{
+public abstract class FenceBlockMixin implements Lavaloggable {
 
-	@ModifyArgs(
-		method = "appendProperties", 
-		at = @At(
-			value = "INVOKE", 
-			target = "Lnet/minecraft/state/StateManager$Builder;add([Lnet/minecraft/state/property/Property;)Lnet/minecraft/state/StateManager$Builder;"
-		)
-	)
+	@ModifyArgs(method = "appendProperties", at = @At(value = "INVOKE", target = "Lnet/minecraft/state/StateManager$Builder;add([Lnet/minecraft/state/property/Property;)Lnet/minecraft/state/StateManager$Builder;"))
 	private void modifyAppendPropertiesArgs(Args args) {
 		Property<?>[] original = args.get(0);
 		// Find WATERLOGGED’s index
@@ -67,7 +58,6 @@ public abstract class FenceBlockMixin implements Lavaloggable{
 		args.set(0, extended);
 	}
 
-
 	@Inject(method = "getPlacementState", at = @At("RETURN"), cancellable = true)
 	private void injectLavaPlacement(ItemPlacementContext ctx, CallbackInfoReturnable<BlockState> cir) {
 		BlockState state = cir.getReturnValue();
@@ -77,18 +67,21 @@ public abstract class FenceBlockMixin implements Lavaloggable{
 	}
 
 	@Inject(method = "getStateForNeighborUpdate", at = @At("RETURN"), cancellable = true)
-	private void injectLavaNeighbor(BlockState state, WorldView world, ScheduledTickView scheduler, BlockPos pos, 
-									Direction dir, BlockPos neighborPos, BlockState neighborState, Random rand, CallbackInfoReturnable<BlockState> cir) {
+	private void injectLavaNeighbor(BlockState state, Direction dir, BlockState neighborState, WorldAccess world,
+			BlockPos pos,
+			BlockPos neighborPos, CallbackInfoReturnable<BlockState> cir) {
 		BlockState updated = cir.getReturnValue();
 		if (updated != null && updated.contains(LAVALOGGED)) {
-			cir.setReturnValue(updateLavaNeighbor(updated,world,scheduler,pos));
+			cir.setReturnValue(updateLavaNeighbor(updated, world, pos));
 		}
 	}
 
-
 	@Override
-	public boolean canFillWithFluid(@Nullable PlayerEntity player, BlockView world, BlockPos pos, BlockState state, Fluid fluid) {
-		if (fluid == Fluids.LAVA && state.contains(Lavaloggable.LAVALOGGED) && BlockListRegistry.isAllowed(state.getBlock()) && !state.get(Lavaloggable.LAVALOGGED) && !state.get(Properties.WATERLOGGED)) {
+	public boolean canFillWithFluid(@Nullable PlayerEntity player, BlockView world, BlockPos pos, BlockState state,
+			Fluid fluid) {
+		if (fluid == Fluids.LAVA && state.contains(Lavaloggable.LAVALOGGED)
+				&& BlockListRegistry.isAllowed(state.getBlock()) && !state.get(Lavaloggable.LAVALOGGED)
+				&& !state.get(Properties.WATERLOGGED)) {
 			return true;
 		}
 		if (fluid == Fluids.WATER && state.contains(Lavaloggable.LAVALOGGED) && state.get(Lavaloggable.LAVALOGGED)) {
@@ -99,14 +92,17 @@ public abstract class FenceBlockMixin implements Lavaloggable{
 
 	@Override
 	public boolean tryFillWithFluid(WorldAccess world, BlockPos pos, BlockState state, FluidState fluidState) {
-		if (fluidState.getFluid() == Fluids.LAVA && state.contains(Lavaloggable.LAVALOGGED) && BlockListRegistry.isAllowed(state.getBlock()) && !state.get(Lavaloggable.LAVALOGGED) && !state.get(Properties.WATERLOGGED)) {
+		if (fluidState.getFluid() == Fluids.LAVA && state.contains(Lavaloggable.LAVALOGGED)
+				&& BlockListRegistry.isAllowed(state.getBlock()) && !state.get(Lavaloggable.LAVALOGGED)
+				&& !state.get(Properties.WATERLOGGED)) {
 			if (!world.isClient()) {
 				world.setBlockState(pos, state.with(Lavaloggable.LAVALOGGED, true), Block.NOTIFY_ALL);
 				world.scheduleFluidTick(pos, Fluids.LAVA, Fluids.LAVA.getTickRate(world));
 			}
 			return true;
 		}
-		if (fluidState.getFluid() == Fluids.WATER && state.contains(Lavaloggable.LAVALOGGED) && !state.get(Lavaloggable.LAVALOGGED) && !state.get(Properties.WATERLOGGED)) {
+		if (fluidState.getFluid() == Fluids.WATER && state.contains(Lavaloggable.LAVALOGGED)
+				&& !state.get(Lavaloggable.LAVALOGGED) && !state.get(Properties.WATERLOGGED)) {
 			if (!world.isClient()) {
 				world.setBlockState(pos, state.with(Properties.WATERLOGGED, true), Block.NOTIFY_ALL);
 				world.scheduleFluidTick(pos, Fluids.WATER, Fluids.WATER.getTickRate(world));
@@ -115,7 +111,6 @@ public abstract class FenceBlockMixin implements Lavaloggable{
 		}
 		return false;
 	}
-
 
 	@Override
 	public ItemStack tryDrainFluid(@Nullable PlayerEntity player, WorldAccess world, BlockPos pos, BlockState state) {
@@ -127,7 +122,7 @@ public abstract class FenceBlockMixin implements Lavaloggable{
 			return new ItemStack(Items.LAVA_BUCKET);
 		}
 		if (state.get(Properties.WATERLOGGED)) {
-			world.setBlockState(pos, state.with(Properties.WATERLOGGED,false), Block.NOTIFY_ALL);
+			world.setBlockState(pos, state.with(Properties.WATERLOGGED, false), Block.NOTIFY_ALL);
 			if (!state.canPlaceAt(world, pos)) {
 				world.breakBlock(pos, true);
 			}

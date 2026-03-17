@@ -26,25 +26,17 @@ import net.minecraft.item.Items;
 import net.minecraft.state.property.Properties;
 import net.minecraft.state.property.Property;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.random.Random;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.WorldAccess;
 import net.minecraft.world.WorldView;
-import net.minecraft.world.tick.ScheduledTickView;
 import net.skirata3222.lavalogging.util.BlockListRegistry;
 import net.skirata3222.lavalogging.util.Lavaloggable;
 
 @Mixin(WallBlock.class)
-public abstract class WallBlockMixin implements Lavaloggable{
+public abstract class WallBlockMixin implements Lavaloggable {
 
-	@ModifyArgs(
-		method = "appendProperties", 
-		at = @At(
-			value = "INVOKE", 
-			target = "Lnet/minecraft/state/StateManager$Builder;add([Lnet/minecraft/state/property/Property;)Lnet/minecraft/state/StateManager$Builder;"
-		)
-	)
+	@ModifyArgs(method = "appendProperties", at = @At(value = "INVOKE", target = "Lnet/minecraft/state/StateManager$Builder;add([Lnet/minecraft/state/property/Property;)Lnet/minecraft/state/StateManager$Builder;"))
 	private void modifyAppendPropertiesArgs(Args args) {
 		Property<?>[] original = args.get(0);
 		// Find WATERLOGGED’s index
@@ -71,29 +63,35 @@ public abstract class WallBlockMixin implements Lavaloggable{
 		args.set(0, extended);
 	}
 
-
 	@Inject(method = "getPlacementState", at = @At("RETURN"), cancellable = true)
 	private void injectLavaPlacement(ItemPlacementContext ctx, CallbackInfoReturnable<BlockState> cir) {
 		BlockState state = cir.getReturnValue();
-		FluidState fluidState =  ctx.getWorld().getFluidState(ctx.getBlockPos());
-		if (fluidState.getFluid() == Fluids.LAVA && state.contains(LAVALOGGED) && BlockListRegistry.isAllowed(state.getBlock())) {
-			cir.setReturnValue(state.with(LAVALOGGED,true));
+		if (state == null) {
+			return;
+		}
+		FluidState fluidState = ctx.getWorld().getFluidState(ctx.getBlockPos());
+		if (fluidState.getFluid() == Fluids.LAVA && state.contains(LAVALOGGED)
+				&& BlockListRegistry.isAllowed(state.getBlock())) {
+			cir.setReturnValue(state.with(LAVALOGGED, true));
 		} else {
-			cir.setReturnValue(state.with(LAVALOGGED,false));
+			cir.setReturnValue(state.with(LAVALOGGED, false));
 		}
 	}
 
 	@Inject(method = "getStateForNeighborUpdate", at = @At("TAIL"))
-	private void lavalogNeighbor(BlockState state, WorldView world, ScheduledTickView tickView, BlockPos pos, Direction direction, BlockPos neighborPos, BlockState neighborState, Random random, CallbackInfoReturnable<BlockState> cir) {
+	private void lavalogNeighbor(BlockState state, Direction direction, BlockState neighborState, WorldAccess world,
+			BlockPos pos, BlockPos neighborPos, CallbackInfoReturnable<BlockState> cir) {
 		if (state.contains(LAVALOGGED) && state.get(LAVALOGGED)) {
-			tickView.scheduleFluidTick(pos, Fluids.LAVA, Fluids.LAVA.getTickRate(world));
+			world.scheduleFluidTick(pos, Fluids.LAVA, Fluids.LAVA.getTickRate(world));
 		}
 	}
 
-
 	@Override
-	public boolean canFillWithFluid(@Nullable PlayerEntity player, BlockView world, BlockPos pos, BlockState state, Fluid fluid) {
-		if (fluid == Fluids.LAVA && state.contains(Lavaloggable.LAVALOGGED) && BlockListRegistry.isAllowed(state.getBlock()) && !state.get(Lavaloggable.LAVALOGGED) && !state.get(Properties.WATERLOGGED)) {
+	public boolean canFillWithFluid(@Nullable PlayerEntity player, BlockView world, BlockPos pos, BlockState state,
+			Fluid fluid) {
+		if (fluid == Fluids.LAVA && state.contains(Lavaloggable.LAVALOGGED)
+				&& BlockListRegistry.isAllowed(state.getBlock()) && !state.get(Lavaloggable.LAVALOGGED)
+				&& !state.get(Properties.WATERLOGGED)) {
 			return true;
 		}
 		if (fluid == Fluids.WATER && state.contains(Lavaloggable.LAVALOGGED) && state.get(Lavaloggable.LAVALOGGED)) {
@@ -104,14 +102,17 @@ public abstract class WallBlockMixin implements Lavaloggable{
 
 	@Override
 	public boolean tryFillWithFluid(WorldAccess world, BlockPos pos, BlockState state, FluidState fluidState) {
-		if (fluidState.getFluid() == Fluids.LAVA && state.contains(Lavaloggable.LAVALOGGED) && BlockListRegistry.isAllowed(state.getBlock()) && !state.get(Lavaloggable.LAVALOGGED) && !state.get(Properties.WATERLOGGED)) {
+		if (fluidState.getFluid() == Fluids.LAVA && state.contains(Lavaloggable.LAVALOGGED)
+				&& BlockListRegistry.isAllowed(state.getBlock()) && !state.get(Lavaloggable.LAVALOGGED)
+				&& !state.get(Properties.WATERLOGGED)) {
 			if (!world.isClient()) {
 				world.setBlockState(pos, state.with(Lavaloggable.LAVALOGGED, true), Block.NOTIFY_ALL);
 				world.scheduleFluidTick(pos, Fluids.LAVA, Fluids.LAVA.getTickRate(world));
 			}
 			return true;
 		}
-		if (fluidState.getFluid() == Fluids.WATER && state.contains(Lavaloggable.LAVALOGGED) && !state.get(Lavaloggable.LAVALOGGED) && !state.get(Properties.WATERLOGGED)) {
+		if (fluidState.getFluid() == Fluids.WATER && state.contains(Lavaloggable.LAVALOGGED)
+				&& !state.get(Lavaloggable.LAVALOGGED) && !state.get(Properties.WATERLOGGED)) {
 			if (!world.isClient()) {
 				world.setBlockState(pos, state.with(Properties.WATERLOGGED, true), Block.NOTIFY_ALL);
 				world.scheduleFluidTick(pos, Fluids.WATER, Fluids.WATER.getTickRate(world));
@@ -120,7 +121,6 @@ public abstract class WallBlockMixin implements Lavaloggable{
 		}
 		return false;
 	}
-
 
 	@Override
 	public ItemStack tryDrainFluid(@Nullable PlayerEntity player, WorldAccess world, BlockPos pos, BlockState state) {
@@ -132,7 +132,7 @@ public abstract class WallBlockMixin implements Lavaloggable{
 			return new ItemStack(Items.LAVA_BUCKET);
 		}
 		if (state.get(Properties.WATERLOGGED)) {
-			world.setBlockState(pos, state.with(Properties.WATERLOGGED,false), Block.NOTIFY_ALL);
+			world.setBlockState(pos, state.with(Properties.WATERLOGGED, false), Block.NOTIFY_ALL);
 			if (!state.canPlaceAt(world, pos)) {
 				world.breakBlock(pos, true);
 			}
@@ -141,31 +141,26 @@ public abstract class WallBlockMixin implements Lavaloggable{
 		return ItemStack.EMPTY;
 	}
 
-	@Inject(
-		method = "<init>", 
-		at = @At(
-			value = "INVOKE",
-			target = "Lnet/minecraft/block/WallBlock;setDefaultState(Lnet/minecraft/block/BlockState;)V",
-			shift = At.Shift.AFTER
-		)
-	)
+	@Inject(method = "<init>", at = @At(value = "INVOKE", target = "Lnet/minecraft/block/WallBlock;setDefaultState(Lnet/minecraft/block/BlockState;)V", shift = At.Shift.AFTER))
 	private void afterDefaultState(CallbackInfo ci) {
-		BlockState adjusted = ((Block)(Object)this).getDefaultState().with(LAVALOGGED, false);
-		((BlockAccessor)(Object)this).invokeSetDefaultState(adjusted);
+		BlockState adjusted = ((Block) (Object) this).getDefaultState().with(LAVALOGGED, false);
+		((BlockAccessor) (Object) this).invokeSetDefaultState(adjusted);
 	}
 
+	@Shadow
+	private Map<BlockState, VoxelShape> shapeMap;
+	@Shadow
+	private Map<BlockState, VoxelShape> collisionShapeMap;
 
-	@Shadow private Map<BlockState, VoxelShape> shapeMap;
-	@Shadow private Map<BlockState, VoxelShape> collisionShapeMap;
-
-	@Inject(method = "getOutlineShape", at = @At("HEAD"),cancellable = true)
-	private void handleOutline(BlockState state, BlockView world, BlockPos pos, ShapeContext context, CallbackInfoReturnable<VoxelShape> cir) {
+	@Inject(method = "getOutlineShape", at = @At("HEAD"), cancellable = true)
+	private void handleOutline(BlockState state, BlockView world, BlockPos pos, ShapeContext context,
+			CallbackInfoReturnable<VoxelShape> cir) {
 		if (state.contains(LAVALOGGED)) {
 			BlockState vanillaState = state.with(LAVALOGGED, false);
 
 			VoxelShape shape = shapeMap.get(vanillaState);
 			if (shape == null) {
-				System.out.println("Wall shape failed outline lookup for "+vanillaState);
+				System.out.println("Wall shape failed outline lookup for " + vanillaState);
 			}
 			if (shape != null) {
 				cir.setReturnValue(shape);
@@ -173,14 +168,15 @@ public abstract class WallBlockMixin implements Lavaloggable{
 		}
 	}
 
-	@Inject(method = "getCollisionShape", at = @At("HEAD"),cancellable = true)
-	private void handleCollision(BlockState state, BlockView world, BlockPos pos, ShapeContext context, CallbackInfoReturnable<VoxelShape> cir) {
+	@Inject(method = "getCollisionShape", at = @At("HEAD"), cancellable = true)
+	private void handleCollision(BlockState state, BlockView world, BlockPos pos, ShapeContext context,
+			CallbackInfoReturnable<VoxelShape> cir) {
 		if (state.contains(LAVALOGGED)) {
 			BlockState vanillaState = state.with(LAVALOGGED, false);
 
 			VoxelShape shape = collisionShapeMap.get(vanillaState);
 			if (shape == null) {
-				System.out.println("Wall shape failed collision lookup for "+vanillaState);
+				System.out.println("Wall shape failed collision lookup for " + vanillaState);
 			}
 			if (shape != null) {
 				cir.setReturnValue(shape);
